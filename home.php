@@ -8,8 +8,9 @@ if(!isset($_SESSION['valid'])) {
 include("config.php");
 
 $categoryFilter = isset($_GET['category']) ? $_GET['category'] : '';
+$sortFilter = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 
-// Initialize filter variables before use
+// Initialize filter variables
 $whereClauses = [];
 $params = [];
 $types = '';
@@ -46,6 +47,23 @@ if (!empty($whereClauses)) {
     $whereClause = 'WHERE ' . implode(' AND ', $whereClauses);
 }
 
+// Determine sorting order
+$orderBy = 'u.upload_date DESC'; // Default
+switch($sortFilter) {
+    case 'oldest':
+        $orderBy = 'u.upload_date ASC';
+        break;
+    case 'a-z':
+        $orderBy = 'u.title ASC';
+        break;
+    case 'z-a':
+        $orderBy = 'u.title DESC';
+        break;
+    case 'popular':
+        $orderBy = 'u.views DESC';
+        break;
+}
+
 $query = "SELECT u.*, us.Username, 
           GROUP_CONCAT(c.name SEPARATOR ', ') as category_names,
           GROUP_CONCAT(c.slug SEPARATOR ',') as category_slugs
@@ -55,7 +73,7 @@ $query = "SELECT u.*, us.Username,
           LEFT JOIN categories c ON uc.category_id = c.id
           $whereClause
           GROUP BY u.id
-          ORDER BY u.upload_date DESC LIMIT 6";
+          ORDER BY $orderBy LIMIT 6";
 
 $stmt = mysqli_prepare($con, $query);
 
@@ -78,69 +96,7 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="home.css">
     <title>Boaverse</title>
-    <style>
-        .categories-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 15px 0;
-        }
-        .category-tag {
-            display: inline-block;
-            padding: 5px 15px;
-            background-color: #f0f0f0;
-            border-radius: 20px;
-            text-decoration: none;
-            color: #333;
-            transition: all 0.2s;
-        }
-        .category-tag:hover, .category-tag.active {
-            background-color: #007bff;
-            color: white;
-        }
-        .project-card {
-            position: relative;
-            overflow: hidden;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
-        }
-        .project-card:hover {
-            transform: translateY(-5px);
-        }
-        .project-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-        }
-        .project-categories {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
-        .project-category {
-            background-color: rgba(0,123,255,0.1);
-            color: #007bff;
-            padding: 3px 8px;
-            border-radius: 15px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .project-category:hover {
-            background-color: rgba(0,123,255,0.2);
-        }
-        .projects-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        .project-info {
-            padding: 15px;
-        }
-    </style>
+
 </head>
 <body>
     <!-- Navbar -->
@@ -203,10 +159,12 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
         <div class="search-container">
             <form method="get" action="">
                 <input type="text" name="search" placeholder="Search projects..." value="<?php echo htmlspecialchars($searchKeyword); ?>">
-                <select name="filter">
-                    <option value="">All Types</option>
-                    <option value="image" <?php echo (isset($_GET['filter']) && $_GET['filter'] == 'image' ? 'selected' : ''); ?>>Images</option>
-                    <option value="pdf" <?php echo (isset($_GET['filter']) && $_GET['filter'] == 'pdf' ? 'selected' : ''); ?>>PDFs</option>
+            <select name="sort" id="sort" onchange="this.form.submit()">
+                     <option value="all" <?php echo ($sortFilter == 'all') ? 'selected' : ''; ?>>All</option>
+                    <option value="newest" <?php echo ($sortFilter == 'newest') ? 'selected' : ''; ?>>Newest First</option>
+                    <option value="oldest" <?php echo ($sortFilter == 'oldest') ? 'selected' : ''; ?>>Oldest First</option>
+                    <option value="a-z" <?php echo ($sortFilter == 'a-z') ? 'selected' : ''; ?>>A-Z</option>
+                    <option value="z-a" <?php echo ($sortFilter == 'z-a') ? 'selected' : ''; ?>>Z-A</option>
                 </select>
                 <button type="submit" class="search-btn">Search</button>
                 <?php if(!empty($categoryFilter)): ?>
@@ -214,6 +172,8 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
                 <?php endif; ?>
             </form>
         </div>
+        
+
         
         <?php if(!empty($searchKeyword) || !empty($fileFilter)): ?>
             <div class="search-results-info">
