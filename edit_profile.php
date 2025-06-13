@@ -119,6 +119,8 @@ $user = mysqli_fetch_assoc($result);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Profile - Boaverse</title>
     <link rel="stylesheet" href="edit_pp.css">
+          <link rel="Website icon" type="png" href="icon_web.png">
+
 </head>
 <body>
     <div class="profile-container">

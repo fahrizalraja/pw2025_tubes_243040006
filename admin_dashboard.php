@@ -75,6 +75,8 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <link rel="stylesheet" href="admin_db.css">
+         <link rel="Website icon" type="png" href="icon_web.png">
+
     <title>Admin Dashboard</title>
   
 </head>

@@ -51,6 +51,8 @@ if(isset($_POST['submit'])) {
 <head>
     <title>Register</title>
     <link rel="stylesheet" href="style.css">
+          <link rel="Website icon" type="png" href="icon_web.png">
+
 </head>
 <body>
     <div class="container">

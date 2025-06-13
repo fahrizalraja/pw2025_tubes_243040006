@@ -167,6 +167,8 @@ if(isset($_POST['submit'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload File</title>
     <link rel="stylesheet" href="upload.css">
+          <link rel="Website icon" type="png" href="icon_web.png">
+
 </head>
 <body>
     <!-- Navbar -->

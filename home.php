@@ -95,6 +95,7 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="home.css">
+      <link rel="Website icon" type="png" href="icon_web.png">
     <title>Boaverse</title>
 
 </head>
@@ -160,7 +161,6 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
             <form method="get" action="">
                 <input type="text" name="search" placeholder="Search projects..." value="<?php echo htmlspecialchars($searchKeyword); ?>">
             <select name="sort" id="sort" onchange="this.form.submit()">
-                     <option value="all" <?php echo ($sortFilter == 'all') ? 'selected' : ''; ?>>All</option>
                     <option value="newest" <?php echo ($sortFilter == 'newest') ? 'selected' : ''; ?>>Newest First</option>
                     <option value="oldest" <?php echo ($sortFilter == 'oldest') ? 'selected' : ''; ?>>Oldest First</option>
                     <option value="a-z" <?php echo ($sortFilter == 'a-z') ? 'selected' : ''; ?>>A-Z</option>
