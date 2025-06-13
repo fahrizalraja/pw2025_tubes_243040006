@@ -15,30 +15,40 @@ if(isset($_POST['submit'])) {
     $title = mysqli_real_escape_string($con, $_POST['title']);
     $description = mysqli_real_escape_string($con, $_POST['description']);
     $user_id = $_SESSION['id'];
-    
-    // Validasi file
-    if(isset($_FILES['uploaded_file'])) {
+}
+    // Validasi input
+    if(empty($title)) {
+        $error = 'Judul tidak boleh kosong';
+    } elseif(empty($_FILES['uploaded_file']['name'])) {
+        $error = 'Silakan pilih file.';
+    } else {
+        // Validasi file
         $file = $_FILES['uploaded_file'];
         
-        // Cek error
+        // Cek error upload
         if($file['error'] !== UPLOAD_ERR_OK) {
-            $error = 'Error uploading file.';
+            $error = 'Error uploading file. Code: ' . $file['error'];
         } else {
             // Validasi tipe file
             $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-            if(!in_array($file['type'], $allowed_types)) {
+            $file_type = mime_content_type($file['tmp_name']);
+            
+            if(!in_array($file_type, $allowed_types)) {
                 $error = 'Hanya file JPG, PNG, GIF, atau PDF yang diizinkan.';
             } else {
                 // Validasi rasio gambar hanya untuk file gambar
-                if(strpos($file['type'], 'image') === 0) {
-                    $minRatio = 4/5; // Minimum ratio (contoh: 4:5)
-                    $maxRatio = 16/9; // Maximum ratio (contoh: 16:9)
-                    
+                if(strpos($file_type, 'image') === 0) {
                     list($width, $height) = getimagesize($file['tmp_name']);
-                    $ratio = $width / $height;
-                    
-                    if($ratio < $minRatio || $ratio > $maxRatio) {
-                        $error = "Image ratio must be between 4:5 and 16:9";
+                    if($width === 0 || $height === 0) {
+                        $error = 'Gambar tidak valid atau rusak.';
+                    } else {
+                        $minRatio = 4/5; // Minimum ratio (4:5)
+                        $maxRatio = 16/9; // Maximum ratio (16:9)
+                        $ratio = $width / $height;
+                        
+                        if($ratio < $minRatio || $ratio > $maxRatio) {
+                            $error = "Rasio gambar harus antara 4:5 dan 16:9";
+                        }
                     }
                 }
                 
@@ -51,113 +61,138 @@ if(isset($_POST['submit'])) {
                         // Buat direktori upload jika belum ada
                         $upload_dir = 'uploads/';
                         if(!is_dir($upload_dir)) {
-                            mkdir($upload_dir, 0755, true);
+                            if(!mkdir($upload_dir, 0755, true)) {
+                                $error = 'Gagal membuat direktori upload.';
+                            }
                         }
                         
-                        // Generate nama file unik
-                        $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                        $new_filename = uniqid() . '.' . $file_ext;
-                        $destination = $upload_dir . $new_filename;
-                        
-                        // Pindahkan file ke folder upload
-                        if(move_uploaded_file($file['tmp_name'], $destination)) {
-                            // Resize gambar hanya untuk file gambar
-                            if(strpos($file['type'], 'image') === 0) {
-                                $targetWidth = 800; // Lebar maksimum
-                                $targetHeight = 600; // Tinggi maksimum
+                        if(empty($error)) {
+                            // Generate nama file unik
+                            $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                            $new_filename = uniqid() . '.' . $file_ext;
+                            $destination = $upload_dir . $new_filename;
+                            
+                            // Pindahkan file ke folder upload
+                            if(move_uploaded_file($file['tmp_name'], $destination)) {
+                                // Resize gambar hanya untuk file gambar
+                                if(strpos($file_type, 'image') === 0) {
+                                    $targetWidth = 800; // Lebar maksimum
+                                    $targetHeight = 600; // Tinggi maksimum
+                                    
+                                    list($width, $height, $type) = getimagesize($destination);
+                                    
+                                    switch($type) {
+                                        case IMAGETYPE_JPEG:
+                                            $image = imagecreatefromjpeg($destination);
+                                            break;
+                                        case IMAGETYPE_PNG:
+                                            $image = imagecreatefrompng($destination);
+                                            break;
+                                        case IMAGETYPE_GIF:
+                                            $image = imagecreatefromgif($destination);
+                                            break;
+                                        default:
+                                            unlink($destination);
+                                            $error = "Tipe gambar tidak valid";
+                                            break;
+                                    }
+                                    
+                                    if(empty($error)) {
+                                        // Hitung rasio baru
+                                        $ratio = min($targetWidth/$width, $targetHeight/$height);
+                                        $newWidth = (int)($width * $ratio);
+                                        $newHeight = (int)($height * $ratio);
+                                        
+                                        // Buat canvas baru
+                                        $newImage = imagecreatetruecolor($newWidth, $newHeight);
+                                        
+                                        // Preserve transparency untuk PNG/GIF
+                                        if($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
+                                            imagecolortransparent($newImage, imagecolorallocatealpha($newImage, 0, 0, 0, 127));
+                                            imagealphablending($newImage, false);
+                                            imagesavealpha($newImage, true);
+                                        }
+                                        
+                                        // Resize gambar
+                                        if(!imagecopyresampled($newImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height)) {
+                                            $error = "Gagal melakukan resize gambar";
+                                        } else {
+                                            // Simpan gambar yang sudah diresize
+                                            switch($type) {
+                                                case IMAGETYPE_JPEG:
+                                                    if(!imagejpeg($newImage, $destination, 90)) {
+                                                        $error = "Gagal menyimpan gambar JPEG";
+                                                    }
+                                                    break;
+                                                case IMAGETYPE_PNG:
+                                                    if(!imagepng($newImage, $destination, 9)) {
+                                                        $error = "Gagal menyimpan gambar PNG";
+                                                    }
+                                                    break;
+                                                case IMAGETYPE_GIF:
+                                                    if(!imagegif($newImage, $destination)) {
+                                                        $error = "Gagal menyimpan gambar GIF";
+                                                    }
+                                                    break;
+                                            }
+                                        }
+                                        
+                                        // Bersihkan memory
+                                        imagedestroy($image);
+                                        imagedestroy($newImage);
+                                    }
+                                }
                                 
-                                list($width, $height, $type) = getimagesize($destination);
-                                
-                                switch($type) {
-                                    case IMAGETYPE_JPEG:
-                                        $image = imagecreatefromjpeg($destination);
-                                        break;
-                                    case IMAGETYPE_PNG:
-                                        $image = imagecreatefrompng($destination);
-                                        break;
-                                    case IMAGETYPE_GIF:
-                                        $image = imagecreatefromgif($destination);
-                                        break;
-                                    default:
-                                        // Hapus file jika bukan gambar yang valid
+                                if(empty($error)) {
+                                    // Simpan ke database
+                                    $query = "INSERT INTO user_uploads (user_id, file_name, file_path, title, description) 
+                                             VALUES (?, ?, ?, ?, ?)";
+                                    $stmt = mysqli_prepare($con, $query);
+                                    if(!$stmt) {
+                                        $error = 'Gagal mempersiapkan statement: ' . mysqli_error($con);
                                         unlink($destination);
-                                        die("Invalid image type");
-                                }
-                                
-                                // Hitung rasio baru
-                                $ratio = min($targetWidth/$width, $targetHeight/$height);
-                                $newWidth = (int)($width * $ratio);
-                                $newHeight = (int)($height * $ratio);
-                                
-                                // Buat canvas baru
-                                $newImage = imagecreatetruecolor($newWidth, $newHeight);
-                                
-                                // Preserve transparency untuk PNG/GIF
-                                if($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
-                                    imagecolortransparent($newImage, imagecolorallocatealpha($newImage, 0, 0, 0, 127));
-                                    imagealphablending($newImage, false);
-                                    imagesavealpha($newImage, true);
-                                }
-                                
-                                // Resize gambar
-                                imagecopyresampled($newImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                                
-                                // Simpan gambar yang sudah diresize
-                                switch($type) {
-                                    case IMAGETYPE_JPEG:
-                                        imagejpeg($newImage, $destination, 90); // 90% quality
-                                        break;
-                                    case IMAGETYPE_PNG:
-                                        imagepng($newImage, $destination, 9); // 9 = maximum compression
-                                        break;
-                                    case IMAGETYPE_GIF:
-                                        imagegif($newImage, $destination);
-                                        break;
-                                }
-                                
-                                // Bersihkan memory
-                                imagedestroy($image);
-                                imagedestroy($newImage);
-                            }
-                            
-                            // Simpan ke database
-                            $query = "INSERT INTO user_uploads (user_id, file_name, file_path, title, description) 
-                                     VALUES (?, ?, ?, ?, ?)";
-                            $stmt = mysqli_prepare($con, $query);
-                            mysqli_stmt_bind_param($stmt, "issss", $user_id, $file['name'], $destination, $title, $description);
-                            
-                            if(mysqli_stmt_execute($stmt)) {
-                                $upload_id = mysqli_insert_id($con);
-                                $success = 'File berhasil diupload!';
-                                
-                                // Simpan kategori setelah upload berhasil
-                                if(isset($_POST['categories'])) {
-                                    foreach($_POST['categories'] as $category_id) {
-                                        $insertCat = "INSERT INTO upload_categories (upload_id, category_id) VALUES (?, ?)";
-                                        $stmtCat = mysqli_prepare($con, $insertCat);
-                                        mysqli_stmt_bind_param($stmtCat, "ii", $upload_id, $category_id);
-                                        mysqli_stmt_execute($stmtCat);
-                                        mysqli_stmt_close($stmtCat);
+                                    } else {
+                                        $original_filename = $file['name'];
+                                        mysqli_stmt_bind_param($stmt, "issss", $user_id, $original_filename, $destination, $title, $description);
+                                        
+                                        if(!mysqli_stmt_execute($stmt)) {
+                                            $error = 'Gagal menyimpan data: ' . mysqli_error($con);
+                                            unlink($destination);
+                                        } else {
+                                            $upload_id = mysqli_insert_id($con);
+                                            $success = 'File berhasil diupload!';
+                                            
+                                            // Simpan kategori setelah upload berhasil
+                                            if(isset($_POST['categories']) && is_array($_POST['categories'])) {
+                                                foreach($_POST['categories'] as $category_id) {
+                                                    $category_id = (int)$category_id;
+                                                    if($category_id > 0) {
+                                                        $insertCat = "INSERT INTO upload_categories (upload_id, category_id) VALUES (?, ?)";
+                                                        $stmtCat = mysqli_prepare($con, $insertCat);
+                                                        if($stmtCat) {
+                                                            mysqli_stmt_bind_param($stmtCat, "ii", $upload_id, $category_id);
+                                                            if(!mysqli_stmt_execute($stmtCat)) {
+                                                                $error = 'Gagal menyimpan kategori: ' . mysqli_error($con);
+                                                            }
+                                                            mysqli_stmt_close($stmtCat);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        mysqli_stmt_close($stmt);
                                     }
                                 }
                             } else {
-                                $error = 'Gagal menyimpan data: ' . mysqli_error($con);
-                                // Hapus file yang sudah diupload jika gagal menyimpan ke database
-                                unlink($destination);
+                                $error = 'Gagal memindahkan file.';
                             }
-                            
-                            mysqli_stmt_close($stmt);
-                        } else {
-                            $error = 'Gagal memindahkan file.';
                         }
                     }
                 }
             }
         }
-    } else {
-        $error = 'Silakan pilih file.';
     }
-}
+
 ?>
 
 <!DOCTYPE html>
@@ -167,8 +202,7 @@ if(isset($_POST['submit'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload File</title>
     <link rel="stylesheet" href="upload.css">
-          <link rel="Website icon" type="png" href="icon_web.png">
-
+    <link rel="Website icon" type="png" href="icon_web.png">
 </head>
 <body>
     <!-- Navbar -->
@@ -177,11 +211,11 @@ if(isset($_POST['submit'])) {
         
         <div class="nav-links">
             <a href="home.php">Home</a>
-            <a href="upload.php">Upload</a> 
-            <a href="#">Popular art</a>
-            <a href="#">About</a>
-            <?php if(isset($_SESSION['admin']) && $_SESSION['admin']): ?>
-                <a href="admin_dashboard.php" class="active">Admin Dashboard</a>
+            <a href="upload.php" class="active">Upload</a> 
+            <a href="mypost.php">My post</a>
+      <a href="contact_me.php" class="nav-link">Contact me</a>
+       <?php if(isset($_SESSION['admin']) && $_SESSION['admin']): ?>
+                <a href="admin_dashboard.php">Admin Dashboard</a>
             <?php endif; ?>
         </div>
         
@@ -208,7 +242,7 @@ if(isset($_POST['submit'])) {
     </nav>
     <!-- End Navbar -->
     <div class="container">
-        <h1>Upload Karya Anda</h1>
+        <h1>Upload Your Artworks</h1>
         
         <?php if($error): ?>
             <div class="message error"><?php echo $error; ?></div>
@@ -220,13 +254,13 @@ if(isset($_POST['submit'])) {
         
         <form action="upload.php" method="post" enctype="multipart/form-data">
             <div class="form-group">
-                <label for="title">Judul Karya</label>
-                <input type="text" name="title" id="title" required>
+                <label for="title">Title</label>
+                <input type="text" name="title" id="title" required value="<?php echo isset($_POST['title']) ? htmlspecialchars($_POST['title']) : ''; ?>">
             </div>
             
             <div class="form-group">
-                <label for="description">Deskripsi</label>
-                <textarea name="description" id="description"></textarea>
+                <label for="description">Description</label>
+                <textarea name="description" id="description"><?php echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; ?></textarea>
             </div>
 
             <div class="field input">
@@ -234,8 +268,14 @@ if(isset($_POST['submit'])) {
                 <select name="categories[]" id="categories" multiple>
                     <?php
                     $categories = mysqli_query($con, "SELECT * FROM categories ORDER BY name");
-                    while($cat = mysqli_fetch_assoc($categories)) {
-                        echo '<option value="'.$cat['id'].'">'.$cat['name'].'</option>';
+                    if($categories) {
+                        while($cat = mysqli_fetch_assoc($categories)) {
+                            echo '<option value="'.$cat['id'].'"';
+                            if(isset($_POST['categories']) && in_array($cat['id'], $_POST['categories'])) {
+                                echo ' selected';
+                            }
+                            echo '>'.$cat['name'].'</option>';
+                        }
                     }
                     ?>
                 </select>

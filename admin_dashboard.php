@@ -2,7 +2,6 @@
 session_start();
 include("config.php");
 
-
 if($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
     die("Invalid CSRF token");
 }
@@ -17,6 +16,20 @@ if(!isset($_SESSION['valid']) || $_SESSION['username'] != 'admin') {
     header("Location: index.php");
     exit();
 }
+
+// Pagination settings
+$per_page = 6; // Number of items per page
+$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+if ($page < 1) $page = 1;
+
+// Get total number of uploads
+$count_query = "SELECT COUNT(*) as total FROM user_uploads";
+$count_result = mysqli_query($con, $count_query);
+$total_items = mysqli_fetch_assoc($count_result)['total'];
+$total_pages = ceil($total_items / $per_page);
+
+// Calculate offset
+$offset = ($page - 1) * $per_page;
 
 // Fungsi hapus foto
 if(isset($_GET['delete'])) {
@@ -42,7 +55,7 @@ if(isset($_GET['delete'])) {
         mysqli_stmt_execute($delete);
         
         $_SESSION['message'] = "Foto berhasil dihapus";
-        header("Location: admin_dashboard.php");
+        header("Location: admin_dashboard.php?page=".$page);
         exit();
     }
 }
@@ -58,17 +71,17 @@ if(isset($_POST['edit'])) {
     mysqli_stmt_execute($update);
     
     $_SESSION['message'] = "Perubahan berhasil disimpan";
-    header("Location: admin_dashboard.php");
+    header("Location: admin_dashboard.php?page=".$page);
     exit();
 }
 
-// Ambil semua data upload
+// Ambil data upload dengan pagination
 $uploads = mysqli_query($con, "SELECT u.*, us.username 
                               FROM user_uploads u
                               JOIN users us ON u.user_id = us.Id
-                              ORDER BY u.upload_date DESC");
+                              ORDER BY u.upload_date DESC
+                              LIMIT $per_page OFFSET $offset");
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,54 +89,46 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <link rel="stylesheet" href="admin_db.css">
          <link rel="Website icon" type="png" href="icon_web.png">
-
     <title>Admin Dashboard</title>
-  
 </head>
 <body>
-
-        <!-- Navbar -->
-    <nav class="navbar">
-        <div class="logo">Boaverse</div>
-        
+     <!-- Navbar -->
+    <nav class="navbar" role="navigation" aria-label="Primary Navigation">
+        <div class="logo" tabindex="0">Boaverse</div>
         <div class="nav-links">
-            <a href="home.php">Home</a>
-            <a href="upload.php">Upload</a> 
-            <a href="#">Popular art</a>
-            <a href="#">About</a>
-            <?php if(isset($_SESSION['admin']) && $_SESSION['admin']): ?>
-                <a href="admin_dashboard.php" class="active">Admin Dashboard</a>
+            <a href="home.php" class="nav-link">Home</a>
+            <a href="upload.php" class="nav-link">Upload</a>
+            <a href="mypost.php" class="nav-link">My post</a>
+      <a href="contact_me.php" class="nav-link">Contact me</a>
+<?php if (isset($_SESSION['admin']) && $_SESSION['admin']): ?>
+                <a href="admin_dashboard.php" class="nav-link">Admin Dashboard</a>
             <?php endif; ?>
         </div>
-        
         <div class="user-section">
-            <div class="user-avatar">
+            <div class="user-avatar" tabindex="0" aria-label="User profile picture">
                 <?php
-                $cacheBuster = isset($_SESSION['profile_updated']) ? '?force='.$_SESSION['profile_updated'] : '?force='.time();
-                
-                if(isset($_SESSION['profile_picture']) && !empty($_SESSION['profile_picture'])) {
-                    echo '<img src="'.htmlspecialchars($_SESSION['profile_picture']).$cacheBuster.'" 
-                         alt="Profile" 
-                         class="profile-avatar"
-                         id="navbar-profile-pic">';
+                $cacheBuster = isset($_SESSION['profile_updated']) ? '?force=' . $_SESSION['profile_updated'] : '?force=' . time();
+
+                if (isset($_SESSION['profile_picture']) && !empty($_SESSION['profile_picture'])) {
+                    echo '<img src="' . htmlspecialchars($_SESSION['profile_picture']) . $cacheBuster . '" alt="Profile picture" class="profile-avatar" id="navbar-profile-pic" src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/c88657c3-dd7b-4d5a-92dd-559893106352.png">';
                 } else {
-                    echo '<div class="avatar-initial">'.substr($_SESSION['username'], 0, 1).'</div>';
+                    echo '<div class="avatar-initial" aria-label="User initial">' . strtoupper(substr($_SESSION['username'], 0, 1)) . '</div>';
                 }
                 ?>
             </div>
             <a href="edit_profile.php" class="edit-btn">Edit profile</a>
-            <form action="logout.php" method="post">
-                <button type="submit" class="logout-btn">Logout</button>
+            <form action="logout.php" method="post" style="margin: 0;">
+                <button type="submit" class="logout-btn" aria-label="Logout">Logout</button>
             </form>
         </div>
     </nav>
-    <!-- End Navbar -->
+    <!-- navbar end -->
 
+    <!-- End Navbar -->
 
     <div class="container">
         <div class="header">
             <h1>Admin Dashboard</h1>
-
         </div>
 
         <?php if(isset($_SESSION['message'])): ?>
@@ -145,7 +150,7 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
                                     class="btn btn-primary">
                                 Edit
                             </button>
-                            <a href="admin_dashboard.php?delete=<?php echo $upload['id']; ?>" 
+                            <a href="admin_dashboard.php?delete=<?php echo $upload['id']; ?>&page=<?php echo $page; ?>" 
                                class="btn btn-danger" 
                                onclick="return confirm('Yakin ingin menghapus foto ini?')">
                                 Delete
@@ -155,6 +160,41 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
                 </div>
             <?php endwhile; ?>
         </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="admin_dashboard.php?page=<?php echo $page - 1; ?>" class="btn">&laquo; Previous</a>
+            <?php endif; ?>
+            
+            <?php 
+            // Show page numbers
+            $start = max(1, $page - 2);
+            $end = min($total_pages, $page + 2);
+            
+            if ($start > 1) {
+                echo '<a href="admin_dashboard.php?page=1" class="btn">1</a>';
+                if ($start > 2) echo '<span class="btn disabled">...</span>';
+            }
+            
+            for ($i = $start; $i <= $end; $i++): 
+                if ($i == $page): ?>
+                    <a href="admin_dashboard.php?page=<?php echo $i; ?>" class="btn active"><?php echo $i; ?></a>
+                <?php else: ?>
+                    <a href="admin_dashboard.php?page=<?php echo $i; ?>" class="btn"><?php echo $i; ?></a>
+                <?php endif; 
+            endfor; 
+            
+            if ($end < $total_pages) {
+                if ($end < $total_pages - 1) echo '<span class="btn disabled">...</span>';
+                echo '<a href="admin_dashboard.php?page='.$total_pages.'" class="btn">'.$total_pages.'</a>';
+            }
+            ?>
+            
+            <?php if ($page < $total_pages): ?>
+                <a href="admin_dashboard.php?page=<?php echo $page + 1; ?>" class="btn">Next &raquo;</a>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- Modal Edit -->
@@ -163,6 +203,7 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
             <h2>Edit Foto</h2>
             <form method="POST" action="admin_dashboard.php">
                 <input type="hidden" name="id" id="editId">
+                <input type="hidden" name="page" value="<?php echo $page; ?>">
                 <div style="margin-bottom: 15px;">
                     <label for="title">Judul</label>
                     <input type="text" name="title" id="editTitle" style="width: 100%; padding: 8px;">
