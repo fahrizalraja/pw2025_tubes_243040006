@@ -150,7 +150,6 @@ if(isset($_GET['delete'])) {
     </footer>
 
     <script>
-    // Force refresh image when coming from profile edit
     if(window.location.search.includes('profile_updated')) {
         const profilePic = document.getElementById('navbar-profile-pic');
         if(profilePic) {

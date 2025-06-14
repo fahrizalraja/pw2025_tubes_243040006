@@ -5,9 +5,7 @@ if (mysqli_connect_errno()) {
     die("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-// Set charset to utf8
 mysqli_set_charset($con, "utf8mb4");
 
-// Set timezone
 date_default_timezone_set('Asia/Jakarta');
 ?>

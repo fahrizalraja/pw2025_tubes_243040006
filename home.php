@@ -7,7 +7,6 @@ if (!isset($_SESSION['valid'])) {
 
 include("config.php");
 
-// Pagination settings
 $itemsPerPage = 4;
 $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 if ($currentPage < 1) $currentPage = 1;
@@ -15,12 +14,10 @@ if ($currentPage < 1) $currentPage = 1;
 $categoryFilter = isset($_GET['category']) ? $_GET['category'] : '';
 $sortFilter = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 
-// Initialize filter variables
 $whereClauses = [];
 $params = [];
 $types = '';
 
-// Handle search and filter functionality
 $searchKeyword = isset($_GET['search']) ? trim($_GET['search']) : '';
 $fileFilter = isset($_GET['filter']) ? $_GET['filter'] : '';
 
@@ -52,7 +49,6 @@ if (!empty($whereClauses)) {
     $whereClause = 'WHERE ' . implode(' AND ', $whereClauses);
 }
 
-// Determine sorting order
 $orderBy = 'u.upload_date DESC'; // Default
 switch ($sortFilter) {
     case 'oldest':
@@ -69,7 +65,6 @@ switch ($sortFilter) {
         break;
 }
 
-// Get total count for pagination
 $countQuery = "SELECT COUNT(DISTINCT u.id) as total 
               FROM user_uploads u
               JOIN users us ON u.user_id = us.id
@@ -86,12 +81,10 @@ $countResult = mysqli_stmt_get_result($countStmt);
 $totalItems = mysqli_fetch_assoc($countResult)['total'];
 $totalPages = ceil($totalItems / $itemsPerPage);
 
-// Adjust current page if it's beyond total pages
 if ($currentPage > $totalPages && $totalPages > 0) {
     $currentPage = $totalPages;
 }
 
-// Main query with pagination
 $offset = ($currentPage - 1) * $itemsPerPage;
 $query = "SELECT u.*, us.Username, us.profile_picture,
           GROUP_CONCAT(c.name SEPARATOR ', ') as category_names,
@@ -117,7 +110,6 @@ if (!empty($paramsWithLimit)) {
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 
-// Fetch profile pictures for all users in current page projects
 $profilePictures = [];
 $userIds = [];
 mysqli_data_seek($result, 0);
@@ -139,10 +131,8 @@ if (!empty($userIds)) {
     }
 }
 
-// Reset result pointer for projects to re-fetch for display
 mysqli_data_seek($result, 0);
 
-// Get all categories for the category filter
 $categoriesQuery = "SELECT * FROM categories ORDER BY name";
 $categoriesResult = mysqli_query($con, $categoriesQuery);
 ?>
@@ -308,7 +298,6 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
                 <?php endif; ?>
 
                 <?php
-                // Show limited page numbers with ellipsis
                 $start = max(1, $currentPage - 2);
                 $end = min($totalPages, $currentPage + 2);
 
@@ -337,7 +326,6 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
                 }
                 ?>
 
-                <!-- Next -->
                 <?php if ($currentPage < $totalPages): ?>
                     <a href="?<?php 
                         echo http_build_query(array_merge($_GET, ['page' => $currentPage + 1])); 
@@ -346,7 +334,6 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
                     <span class="pagination-link pagination-next disabled" aria-disabled="true" tabindex="-1">&raquo;</span>
                 <?php endif; ?>
 
-                <!-- Last page -->
                 <?php if ($currentPage < $totalPages): ?>
                     <a href="?<?php 
                         echo http_build_query(array_merge($_GET, ['page' => $totalPages])); 
@@ -364,7 +351,6 @@ $categoriesResult = mysqli_query($con, $categoriesQuery);
     </footer>
 
     <script>
-    // Force refresh profile picture when coming from profile edit
     if (window.location.search.includes('profile_updated=1')) {
         const profilePic = document.getElementById('navbar-profile-pic');
         if (profilePic) {

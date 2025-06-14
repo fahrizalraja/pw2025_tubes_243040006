@@ -7,7 +7,6 @@ if(!isset($_SESSION['valid'])) {
     exit();
 }
 
-// Check if post ID is provided
 if(!isset($_GET['id'])) {
     header("Location: mypost.php");
     exit();
@@ -16,7 +15,6 @@ if(!isset($_GET['id'])) {
 $post_id = intval($_GET['id']);
 $user_id = $_SESSION['id'];
 
-// Verify post ownership
 $query = "SELECT * FROM user_uploads WHERE id = ? AND user_id = ?";
 $stmt = mysqli_prepare($con, $query);
 mysqli_stmt_bind_param($stmt, "ii", $post_id, $user_id);
@@ -30,11 +28,9 @@ if(!$post) {
     exit();
 }
 
-// Get all categories
 $categories_query = "SELECT * FROM categories ORDER BY name";
 $categories_result = mysqli_query($con, $categories_query);
 
-// Get selected categories for this post
 $selected_cats_query = "SELECT category_id FROM upload_categories WHERE upload_id = ?";
 $stmt_cats = mysqli_prepare($con, $selected_cats_query);
 mysqli_stmt_bind_param($stmt_cats, "i", $post_id);
@@ -45,26 +41,21 @@ while($row = mysqli_fetch_assoc($selected_cats_result)) {
     $selected_categories[] = $row['category_id'];
 }
 
-// Handle form submission
 if(isset($_POST['submit'])) {
     $title = mysqli_real_escape_string($con, $_POST['title']);
     $description = mysqli_real_escape_string($con, $_POST['description']);
     $categories = isset($_POST['categories']) ? $_POST['categories'] : [];
     
-    // Update post
     $update_query = "UPDATE user_uploads SET title = ?, description = ? WHERE id = ?";
     $stmt = mysqli_prepare($con, $update_query);
     mysqli_stmt_bind_param($stmt, "ssi", $title, $description, $post_id);
     mysqli_stmt_execute($stmt);
     
-    // Update categories
-    // First delete existing categories
     $delete_query = "DELETE FROM upload_categories WHERE upload_id = ?";
     $stmt_del = mysqli_prepare($con, $delete_query);
     mysqli_stmt_bind_param($stmt_del, "i", $post_id);
     mysqli_stmt_execute($stmt_del);
     
-    // Then insert new categories
     if(!empty($categories)) {
         foreach($categories as $cat_id) {
             $cat_id = intval($cat_id);
@@ -93,9 +84,7 @@ if(isset($_POST['submit'])) {
     <link rel="Website icon" type="png" href="icon_web.png">
 </head>
 <body>
-    <!-- Navbar (sama dengan mypost.php) -->
     <nav class="navbar">
-        <!-- ... kopi navbar dari mypost.php ... -->
     </nav>
 
     <div class="container">

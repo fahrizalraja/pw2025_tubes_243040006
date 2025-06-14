@@ -11,31 +11,25 @@ if(!isset($_SESSION['valid']) || !$_SESSION['admin']) {
     exit();
 }
 
-// Cek apakah user adalah admin
 if(!isset($_SESSION['valid']) || $_SESSION['username'] != 'admin') {
     header("Location: index.php");
     exit();
 }
 
-// Pagination settings
 $per_page = 6; // Number of items per page
 $page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 if ($page < 1) $page = 1;
 
-// Get total number of uploads
 $count_query = "SELECT COUNT(*) as total FROM user_uploads";
 $count_result = mysqli_query($con, $count_query);
 $total_items = mysqli_fetch_assoc($count_result)['total'];
 $total_pages = ceil($total_items / $per_page);
 
-// Calculate offset
 $offset = ($page - 1) * $per_page;
 
-// Fungsi hapus foto
 if(isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
     
-    // Ambil info file sebelum dihapus
     $query = "SELECT file_path FROM user_uploads WHERE id = ?";
     $stmt = mysqli_prepare($con, $query);
     mysqli_stmt_bind_param($stmt, "i", $id);
@@ -44,12 +38,10 @@ if(isset($_GET['delete'])) {
     $file = mysqli_fetch_assoc($result);
     
     if($file) {
-        // Hapus file dari server
         if(file_exists($file['file_path'])) {
             unlink($file['file_path']);
         }
         
-        // Hapus dari database
         $delete = mysqli_prepare($con, "DELETE FROM user_uploads WHERE id = ?");
         mysqli_stmt_bind_param($delete, "i", $id);
         mysqli_stmt_execute($delete);
@@ -60,7 +52,6 @@ if(isset($_GET['delete'])) {
     }
 }
 
-// Fungsi edit foto
 if(isset($_POST['edit'])) {
     $id = intval($_POST['id']);
     $title = mysqli_real_escape_string($con, $_POST['title']);
@@ -75,7 +66,6 @@ if(isset($_POST['edit'])) {
     exit();
 }
 
-// Ambil data upload dengan pagination
 $uploads = mysqli_query($con, "SELECT u.*, us.username 
                               FROM user_uploads u
                               JOIN users us ON u.user_id = us.Id
@@ -124,7 +114,6 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
     </nav>
     <!-- navbar end -->
 
-    <!-- End Navbar -->
 
     <div class="container">
         <div class="header">
@@ -161,14 +150,12 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
             <?php endwhile; ?>
         </div>
 
-        <!-- Pagination -->
         <div class="pagination">
             <?php if ($page > 1): ?>
                 <a href="admin_dashboard.php?page=<?php echo $page - 1; ?>" class="btn">&laquo; Previous</a>
             <?php endif; ?>
             
             <?php 
-            // Show page numbers
             $start = max(1, $page - 2);
             $end = min($total_pages, $page + 2);
             
@@ -197,7 +184,6 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
         </div>
     </div>
 
-    <!-- Modal Edit -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <h2>Edit Foto</h2>
@@ -219,7 +205,6 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
     </div>
 
     <script>
-        // Fungsi modal
         function openEditModal(id, title, description) {
             document.getElementById('editId').value = id;
             document.getElementById('editTitle').value = title;
@@ -231,7 +216,6 @@ $uploads = mysqli_query($con, "SELECT u.*, us.username
             document.getElementById('editModal').style.display = 'none';
         }
         
-        // Tutup modal saat klik di luar
         window.onclick = function(event) {
             if (event.target == document.getElementById('editModal')) {
                 closeEditModal();

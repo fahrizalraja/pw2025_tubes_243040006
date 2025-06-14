@@ -16,23 +16,19 @@ if(isset($_POST['submit'])) {
     $age = intval($_POST['age']);
     $id = $_SESSION['id'];
     
-    // Handle profile picture upload
     if(isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['profile_picture'];
         
-        // Validate file type
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
         $file_type = mime_content_type($file['tmp_name']);
         
         if(!in_array($file_type, $allowed_types)) {
             $error = 'Only JPG, PNG, or GIF files are allowed.';
         } else {
-            // Validate file size (max 2MB)
             $max_size = 2 * 1024 * 1024;
             if($file['size'] > $max_size) {
                 $error = 'Maximum file size is 2MB.';
             } else {
-                // Create upload directory if not exists
                 $upload_dir = 'profile_pictures/';
                 if(!is_dir($upload_dir)) {
                     if(!mkdir($upload_dir, 0755, true)) {
@@ -40,14 +36,11 @@ if(isset($_POST['submit'])) {
                     }
                 }
                 
-                // Generate unique filename
                 $file_ext = pathinfo($file['name'], PATHINFO_EXTENSION);
                 $new_filename = 'user_' . $id . '_' . uniqid() . '.' . $file_ext;
                 $destination = $upload_dir . $new_filename;
                 
-                // Move uploaded file
                 if(move_uploaded_file($file['tmp_name'], $destination)) {
-                    // Delete old picture if exists
                     $query = "SELECT profile_picture FROM users WHERE id = ?";
                     $stmt = mysqli_prepare($con, $query);
                     mysqli_stmt_bind_param($stmt, "i", $id);
@@ -59,7 +52,6 @@ if(isset($_POST['submit'])) {
                         unlink($old_pic);
                     }
                     
-                    // Update database with new picture path
                     $update_pic = "UPDATE users SET profile_picture = ?, Username = ?, Email = ?, Age = ? WHERE id = ?";
                     $stmt = mysqli_prepare($con, $update_pic);
                     mysqli_stmt_bind_param($stmt, "sssii", $destination, $username, $email, $age, $id);
@@ -84,7 +76,6 @@ if(isset($_POST['submit'])) {
             }
         }
     } else {
-        // Update without changing picture
         $update_query = "UPDATE users SET Username = ?, Email = ?, Age = ? WHERE id = ?";
         $stmt = mysqli_prepare($con, $update_query);
         mysqli_stmt_bind_param($stmt, "ssii", $username, $email, $age, $id);
@@ -103,7 +94,6 @@ if(isset($_POST['submit'])) {
     }
 }
 
-// Get user data
 $user_query = "SELECT * FROM users WHERE id = ?";
 $stmt = mysqli_prepare($con, $user_query);
 mysqli_stmt_bind_param($stmt, "i", $_SESSION['id']);
@@ -174,7 +164,6 @@ $user = mysqli_fetch_assoc($result);
     </div>
 
     <script>
-        // Preview profile picture before upload
         document.getElementById('profile_picture').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file && file.type.match('image.*')) {

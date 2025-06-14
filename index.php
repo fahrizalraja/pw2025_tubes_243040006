@@ -6,7 +6,6 @@ if(isset($_POST['submit'])) {
     $email = mysqli_real_escape_string($con, $_POST['email']);
     $password = $_POST['password'];
 
-    // Use proper column names from your database
     $stmt = mysqli_prepare($con, "SELECT id, Email, Username, Age, Password, is_admin FROM users WHERE Email = ?");
     
     if(!$stmt) {
@@ -22,14 +21,12 @@ if(isset($_POST['submit'])) {
         $error = "Email not found";
     } else {
         if(password_verify($password, $user['Password'])) {
-            // Login successful - set all session variables
             $_SESSION['valid'] = true;
             $_SESSION['id'] = $user['id'];
             $_SESSION['username'] = $user['Username'];
             $_SESSION['email'] = $user['Email'];
             $_SESSION['age'] = $user['Age'];
             
-            // Set admin status based on database value
             $_SESSION['admin'] = ($user['is_admin'] == 1);
             
             header("Location: home.php");

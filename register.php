@@ -3,34 +3,28 @@ session_start();
 include("config.php");
 
 if(isset($_POST['submit'])) {
-    // Validasi input
     $username = mysqli_real_escape_string($con, $_POST['username']);
     $email = mysqli_real_escape_string($con, $_POST['email']);
     $age = mysqli_real_escape_string($con, $_POST['age']);
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
 
-    // Validasi data
     if(empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
         echo "<div class='message'><p>Semua field harus diisi!</p></div>";
     } elseif($password !== $confirm_password) {
         echo "<div class='message'><p>Password tidak cocok!</p></div>";
     } else {
-        // Cek apakah email sudah terdaftar
         $check_email = mysqli_query($con, "SELECT Email FROM users WHERE Email='$email'");
         
         if(mysqli_num_rows($check_email) > 0) {
             echo "<div class='message'><p>Email sudah terdaftar!</p></div>";
         } else {
-            // Hash password sebelum disimpan
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             
-            // Simpan ke database
             $query = "INSERT INTO users (Username, Email, Age, Password) VALUES ('$username', '$email', '$age', '$hashed_password')";
             $result = mysqli_query($con, $query);
             
             if($result) {
-                // Set session dan redirect ke home
                 $_SESSION['valid'] = $email;
                 $_SESSION['username'] = $username;
                 $_SESSION['age'] = $age;

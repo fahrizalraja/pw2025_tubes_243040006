@@ -7,7 +7,6 @@ if (!isset($_SESSION['valid'])) {
 
 include("config.php");
 
-// Handle form submission
 $messageSent = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = mysqli_real_escape_string($con, $_POST['name']);
